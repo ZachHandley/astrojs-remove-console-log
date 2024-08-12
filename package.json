@@ -1,0 +1,40 @@
+{
+  "name": "astro-console-cleaner",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "astro-integration",
+    "astro",
+    "console",
+    "cleaner"
+  ],
+  "peerDependencies": {
+    "astro": "^4.0.0"
+  },
+  "dependencies": {
+    "acorn": "^8.12.1",
+    "acorn-walk": "^8.3.3",
+    "escodegen": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/acorn": "^6.0.0",
+    "@types/escodegen": "^0.0.10",
+    "@types/node": "^22.2.0",
+    "astro": "^4.0.0",
+    "typescript": "^5.1.6"
+  }
+}

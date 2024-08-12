@@ -1,2 +1,28 @@
-# astrojs-remove-console-log
- A first attempt at a very simple integration to remove console.log's from the built version of Astro projects
+# Astro Console Cleaner
+
+An Astro integration that removes `console.log`, `console.warn`, and `console.error` statements from your code during the build process.
+
+## Installation
+
+```sh
+npm install astro-console-cleaner
+```
+
+## Usage
+
+Add the integration to your `astro.config.mjs` file:
+
+```javascript
+import { defineConfig } from 'astro/config';
+import consoleRemover from 'astro-console-cleaner';
+
+export default defineConfig({
+  integrations: [consoleRemover()],
+});
+```
+
+This integration will remove all `console.log`, `console.warn`, and `console.error` statements from your code during the build process. It will not affect your development environment.
+
+## License
+
+MIT
