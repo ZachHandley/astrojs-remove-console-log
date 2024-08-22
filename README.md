@@ -14,10 +14,10 @@ Add the integration to your `astro.config.mjs` file:
 
 ```javascript
 import { defineConfig } from 'astro/config';
-import consoleRemover from 'astro-console-cleaner';
+import astroConsoleCleaner from 'astro-console-cleaner';
 
 export default defineConfig({
-  integrations: [consoleRemover()],
+  integrations: [astroConsoleCleaner()],
 });
 ```
 

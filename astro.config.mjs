@@ -1,7 +1,13 @@
 import { defineConfig } from "astro/config";
-import consoleCleanerIntegration from "./src/index.ts";
+import astroConsoleCleaner from "./src/index.ts";
 
 // https://astro.build/config
 export default defineConfig({
-  integrations: [consoleCleanerIntegration()],
+  integrations: [astroConsoleCleaner()],
+  vite: {
+    test: {
+      globals: true,
+      environment: "node",
+    },
+  },
 });
