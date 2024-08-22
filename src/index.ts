@@ -1,30 +1,35 @@
 import type { AstroIntegration } from "astro";
 import { processDirectory } from "./utils/ast.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
 export default function astroConsoleCleaner(): AstroIntegration {
   return {
     name: "console-cleaner",
     hooks: {
-      "astro:build:setup": async ({ logger, vite, pages }) => {
-        const pathsToProcess = new Set<string>();
+      "astro:config:setup": ({ config, command, logger }) => {
+        if (command === "build") {
+          const srcDir = config.srcDir
+            ? fileURLToPath(config.srcDir)
+            : path.join(process.cwd(), "src");
 
-        logger.info(`Processing ${Object.keys(pages).length} pages...`);
-        // Collect paths from pages
-        for (const [, pageData] of Object.entries(pages)) {
-          if (pageData.component) {
-            pathsToProcess.add(pageData.component);
-          }
-        }
+          logger.info(
+            "Removing console statements from project files in " + srcDir
+          );
 
-        // Add Vite root if available
-        if (vite.root) {
-          logger.info(`Processing base directory ${vite.root}...`);
-          pathsToProcess.add(vite.root);
-        }
-
-        // Process all collected paths
-        for (const path of pathsToProcess) {
-          await processDirectory(path);
+          processDirectory(srcDir, logger)
+            .then(() => {
+              logger.info("Console statements removed successfully.");
+            })
+            .catch((error: any) => {
+              logger.error(
+                `Error removing console statements: ${error.message}`
+              );
+            });
+        } else {
+          logger.info(
+            "Console statements will not be removed during development."
+          );
         }
       },
     },
