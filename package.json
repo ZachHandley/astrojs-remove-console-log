@@ -9,11 +9,19 @@
       "default": "./dist/index.js"
     }
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zachhandley/astrojs-remove-console-log.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
   "files": [
-    "src"
+    "dist"
   ],
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsup",
     "deploy": "bun run build && npm publish --access public",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -24,23 +32,26 @@
     "cleaner"
   ],
   "peerDependencies": {
-    "astro": "^4.0.0"
+    "astro": "^4.0.0",
+    "vue": "^3.0.0",
+    "svelte": "^3.0.0 || ^4.0.0"
   },
   "dependencies": {
     "acorn": "^8.12.1",
     "acorn-typescript": "^1.4.13",
     "acorn-walk": "^8.3.3",
     "escodegen": "^2.1.0",
-    "esprima": "^4.0.1",
-    "svelte": "^4.2.18",
-    "vue": "^3.4.38"
+    "esprima": "^4.0.1"
   },
   "devDependencies": {
     "@types/escodegen": "^0.0.10",
     "@types/esprima": "^4.0.6",
     "@types/node": "^22.2.0",
     "astro": "^4.0.0",
+    "tsup": "^8.2.4",
     "typescript": "^5.1.6",
-    "vitest": "^2.0.5"
+    "vitest": "^2.0.5",
+    "vue": "^3.4.38",
+    "svelte": "^4.2.18"
   }
 }

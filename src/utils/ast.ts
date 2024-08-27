@@ -1,20 +1,19 @@
 import * as acorn from "acorn";
 import * as acornWalk from "acorn-walk";
 import tsPlugin from "acorn-typescript";
-import { parse as parseVue, compileTemplate } from "@vue/compiler-sfc";
-import { parse as parseSvelte, walk as walkSvelte } from "svelte/compiler";
-import fs from "fs/promises";
-import path from "path";
-import { ignoreConstants, matchConstants } from "./constants.js";
-import type { AstroIntegrationLogger } from "astro";
+import type { AstroConfig } from "astro";
 
 // Main function to remove console.log statements based on file type
-export function removeConsoleLogs(code: string, fileType: string): string {
+export async function removeConsoleLogs(
+  code: string,
+  fileType: string,
+  config: AstroConfig
+): Promise<string> {
   switch (fileType) {
     case "vue":
-      return removeConsoleLogsVue(code);
+      return await removeConsoleLogsVue(code, config);
     case "svelte":
-      return removeConsoleLogsSvelte(code);
+      return await removeConsoleLogsSvelte(code, config);
     case "astro":
       return removeAstroConsoleLogs(code);
     default:
@@ -68,25 +67,41 @@ function removeAstroConsoleLogs(code: string): string {
 }
 
 // Remove console.log statements from Vue files
-function removeConsoleLogsVue(code: string): string {
-  const descriptor = parseVue(code).descriptor;
-  let scriptContent = descriptor.script?.content || "";
-  let templateContent = descriptor.template?.content || "";
+async function removeConsoleLogsVue(
+  code: string,
+  config: AstroConfig
+): Promise<string> {
+  const vueIntegration = config.integrations.find((integration) =>
+    integration.name.includes("vue")
+  );
 
-  if (scriptContent) {
-    scriptContent = removeConsoleLogsJS(scriptContent);
+  if (!vueIntegration) {
+    console.warn(
+      "Vue integration is not enabled in Astro config. Skipping Vue file processing."
+    );
+    return code;
   }
 
-  if (templateContent) {
-    const { code: compiledTemplate } = compileTemplate({
-      filename: "template.vue",
-      id: "template",
-      source: templateContent,
-    });
-    templateContent = compiledTemplate;
-  }
+  try {
+    const { parse, compileTemplate } = await import("@vue/compiler-sfc");
+    const { descriptor } = parse(code);
+    let scriptContent = descriptor.script?.content || "";
+    let templateContent = descriptor.template?.content || "";
 
-  return `
+    if (scriptContent) {
+      scriptContent = removeConsoleLogsJS(scriptContent);
+    }
+
+    if (templateContent) {
+      const { code: compiledTemplate } = compileTemplate({
+        filename: "template.vue",
+        id: "template",
+        source: templateContent,
+      });
+      templateContent = compiledTemplate;
+    }
+
+    return `
 <template>
 ${templateContent.trim()}
 </template>
@@ -94,92 +109,52 @@ ${templateContent.trim()}
 <script>
 ${scriptContent.trim()}
 </script>
-  `;
-}
-
-// Remove console.log statements from Svelte files
-function removeConsoleLogsSvelte(code: string): string {
-  const ast = parseSvelte(code);
-
-  // A naive approach to reconstruct the code from the AST
-  let modifiedCode = code;
-
-  walkSvelte(ast as any, {
-    enter(node) {
-      if (
-        node.type === "CallExpression" &&
-        node.callee.type === "MemberExpression" &&
-        // @ts-expect-error
-        node.callee.object.name === "console"
-      ) {
-        // @ts-expect-error
-        const { start, end } = node;
-        modifiedCode =
-          modifiedCode.substring(0, start) + modifiedCode.substring(end);
-      }
-    },
-  });
-
-  return modifiedCode;
-}
-
-// Function to process a single file
-async function processFile(filePath: string): Promise<void> {
-  try {
-    const content = await fs.readFile(filePath, "utf-8");
-    const fileType = path.extname(filePath).slice(1);
-    const updatedContent = removeConsoleLogs(content, fileType);
-    if (content !== updatedContent) {
-      await fs.writeFile(filePath, updatedContent);
-    }
+    `;
   } catch (error) {
-    console.error(`Error processing file ${filePath}:`, error);
+    console.error("Error processing Vue file:", error);
+    return code;
   }
 }
 
-export async function processDirectory(
-  dir: string,
-  logger?: AstroIntegrationLogger
-): Promise<void> {
+// Remove console.log statements from Svelte files
+async function removeConsoleLogsSvelte(
+  code: string,
+  config: AstroConfig
+): Promise<string> {
+  const svelteIntegration = config.integrations.find((integration) =>
+    integration.name.includes("svelte")
+  );
+
+  if (!svelteIntegration) {
+    console.warn(
+      "Svelte integration is not enabled in Astro config. Skipping Svelte file processing."
+    );
+    return code;
+  }
+
   try {
-    if (logger) logger.debug(`Processing ${dir}`);
-    console.log(`Processing ${dir}`);
-    const entries = await fs.readdir(dir, { withFileTypes: true });
+    const { parse, walk } = await import("svelte/compiler");
+    const ast = parse(code);
 
-    for (const entry of entries) {
-      const relativePath = path.relative(dir, path.join(dir, entry.name));
-      const fullPath = path.join(dir, entry.name);
+    let modifiedCode = code;
 
-      // Skip the entry if it matches any of the ignore patterns
-      if (ignoreConstants.some((ignore) => relativePath.includes(ignore))) {
-        continue;
-      }
-
-      // Process only if it matches one of the patterns in matchConstants
-      if (
-        (entry.isFile() &&
-          matchConstants.some((match) =>
-            relativePath.toLowerCase().includes(match.toLowerCase())
-          )) ||
-        entry.isDirectory()
-      ) {
-        console.log(`Processing ${relativePath}`);
-        if (logger) logger.debug(`Processing ${relativePath}`);
-
-        if (entry.isDirectory()) {
-          await processDirectory(fullPath, logger);
-        } else if (
-          entry.isFile() &&
-          /\.(js|mjs|cjs|ts|mts|cts|jsx|tsx|astro)$/.test(entry.name)
+    walk(ast as any, {
+      enter(node: any) {
+        if (
+          node.type === "CallExpression" &&
+          node.callee.type === "MemberExpression" &&
+          node.callee.object.name === "console"
         ) {
-          await processFile(fullPath);
+          const { start, end } = node;
+          modifiedCode =
+            modifiedCode.substring(0, start) + modifiedCode.substring(end);
         }
-      } else {
-        console.log(`Skipping ${relativePath}`);
-      }
-    }
-  } catch (error: any) {
-    console.error(error);
-    if (logger) logger.error(error);
+      },
+    });
+
+    return modifiedCode;
+  } catch (error) {
+    console.error("Error processing Svelte file:", error);
+    return code;
   }
 }
