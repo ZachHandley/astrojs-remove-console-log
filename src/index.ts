@@ -1,36 +1,27 @@
 import type { AstroIntegration } from "astro";
-import { processDirectory } from "./utils/ast.js";
+import { type PluginOption } from "vite";
+import { removeConsoleLogs } from "./utils/ast.js";
+import { matchConstants } from "./utils/constants.js";
 import path from "path";
-import { fileURLToPath } from "url";
 
 export default function astroConsoleCleaner(): AstroIntegration {
   return {
     name: "console-cleaner",
     hooks: {
-      "astro:config:setup": ({ config, command, logger }) => {
-        if (command === "build") {
-          const srcDir = config.srcDir
-            ? fileURLToPath(config.srcDir)
-            : path.join(process.cwd(), "src");
-
-          logger.info(
-            "Removing console statements from project files in " + srcDir
-          );
-
-          processDirectory(srcDir, logger)
-            .then(() => {
-              logger.info("Console statements removed successfully.");
-            })
-            .catch((error: any) => {
-              logger.error(
-                `Error removing console statements: ${error.message}`
+      "astro:build:setup": ({ vite, logger }) => {
+        vite.plugins = vite.plugins || [];
+        vite.plugins.push({
+          name: "remove-console-logs",
+          transform(code: string, id: string) {
+            if (matchConstants.some((ext) => id.endsWith(ext))) {
+              logger.info(
+                `Removing console statements from ${path.basename(id)}`
               );
-            });
-        } else {
-          logger.info(
-            "Console statements will not be removed during development."
-          );
-        }
+              return removeConsoleLogs(code, path.extname(id).slice(1));
+            }
+            return code;
+          },
+        } satisfies PluginOption);
       },
     },
   };

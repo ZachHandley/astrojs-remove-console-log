@@ -9,7 +9,7 @@ import { ignoreConstants, matchConstants } from "./constants.js";
 import type { AstroIntegrationLogger } from "astro";
 
 // Main function to remove console.log statements based on file type
-function removeConsoleLogs(code: string, fileType: string): string {
+export function removeConsoleLogs(code: string, fileType: string): string {
   switch (fileType) {
     case "vue":
       return removeConsoleLogsVue(code);
@@ -51,18 +51,20 @@ function removeConsoleLogsJS(code: string): string {
 
 // Remove console.log statements from Astro files
 function removeAstroConsoleLogs(code: string): string {
-  console.log("Astro code: ", code);
-  const codeFirstBlockRemoved = code.substring(3);
-  const tempCodeBlock = codeFirstBlockRemoved.substring(
-    0,
-    codeFirstBlockRemoved.indexOf("---")
-  );
-  console.log(tempCodeBlock);
-  const output = `---
-${removeConsoleLogsJS(tempCodeBlock)}
----`;
-  console.log(output);
-  return output;
+  const frontmatterRegex = /^---\s*[\s\S]*?\s*---/;
+  const frontmatterMatch = code.match(frontmatterRegex);
+
+  if (frontmatterMatch) {
+    const [frontmatter] = frontmatterMatch;
+    const contentAfterFrontmatter = code.slice(frontmatter.length);
+
+    const cleanedContent = removeConsoleLogsJS(contentAfterFrontmatter);
+
+    return `${frontmatter}\n${cleanedContent}`;
+  }
+
+  // If no frontmatter is found, process the entire file
+  return removeConsoleLogsJS(code);
 }
 
 // Remove console.log statements from Vue files
